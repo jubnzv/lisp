@@ -14,8 +14,6 @@
 
 int main(int argc, char **argv)
 {
-    printf("Interpreter version %s\n", L_VERSION);
-
     /* Define parser */
     mpc_parser_t *Number    = mpc_new("number");
     mpc_parser_t *Symbol    = mpc_new("symbol");
@@ -35,11 +33,41 @@ int main(int argc, char **argv)
             ",
             Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
-    puts("C-c for exit.\n");
 
     /* Initialize new environment */
     lenv* e = lenv_new();
     lenv_add_builtins(e);
+
+    mpc_result_t r;
+
+    if(argc == 1) {
+	repl(e, Lispy); /* Start the interactive shell */
+    } else {
+	/* Execute source code from files */
+	for(int i = 1; i < argc; i++) {
+#ifdef L_DEBUG
+	    printf("===\tFile: %s\n", argv[i]);
+#endif
+	    mpc_parse_contents(argv[i], Lispy, &r);
+	    lval *user_value = lval_read(r.output);
+	    lval *x = lval_eval(e, user_value);
+	    lval_println(x);
+	    lval_del(x);
+	}
+    }
+
+    /* cleanup routines */
+    mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
+    lenv_del(e);
+
+    return 0;
+}
+
+/* REPL for using interpreter in interactive mode */
+void repl(lenv *e, mpc_parser_t *Lispy)
+{
+    printf("Interpreter version %s\n", L_VERSION);
+    puts("C-c for exit.\n");
 
     while(1) {
         char *input = readline("lispy> \n");
@@ -63,12 +91,6 @@ int main(int argc, char **argv)
 
         free(input);
     }
-
-    /* cleanup routines */
-    mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
-    lenv_del(e);
-
-    return 0;
 }
 
 
